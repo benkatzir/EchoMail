@@ -340,8 +340,7 @@ async def gmail_notify():
         print(f"New email: {snippet}")
 
         # Run categorization in background
-        import asyncio
-        asyncio.create_task(categorize(email_body=snippet))
+        await categorize(email_body=snippet)
         
 
 
