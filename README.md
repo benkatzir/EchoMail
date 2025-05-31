@@ -1,3 +1,4 @@
+You will need to download ngrok
 expose local flask app with ngrok.exe
 
 to run static ngrok:

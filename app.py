@@ -8,6 +8,9 @@ import json
 import pathlib
 import requests
 load_dotenv()  # Load variables from .env
+import base64
+user_credentials = {}
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -46,14 +49,12 @@ def oauth2callback():
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
     print("TOKEN",creds.token)
-    session['credentials'] = {
-        'token': creds.token,
-        'refresh_token': creds.refresh_token,
-        'token_uri': creds.token_uri,
-        'client_id': creds.client_id,
-        'client_secret': creds.client_secret,
-        'scopes': creds.scopes
-    }
+    service = build('gmail', 'v1', credentials=creds)
+    profile = service.users().getProfile(userId='me').execute()
+    email_address = profile['emailAddress']
+    user_credentials[email_address] = creds  # Store creds mapped to email
+
+    print(f"Authenticated: {email_address}")
 
     # Call Gmail API to set up watch
     service = build('gmail', 'v1', credentials=creds)
@@ -76,6 +77,38 @@ def logout():
 def gmail_notify():
     data = request.get_json()
     print("Received Gmail notification:", data)
+
+    try:
+        encoded_data = data['message']['data']
+        decoded_data = base64.urlsafe_b64decode(encoded_data).decode('utf-8')
+        payload = json.loads(decoded_data)
+
+        user_email = payload.get("emailAddress")
+        history_id = payload.get("historyId")  # optional for future use
+
+        creds = user_credentials.get(user_email)
+        if not creds:
+            print(f"No credentials found for {user_email}")
+            return '', 200
+
+        # Rebuild service and get latest messages
+        service = build('gmail', 'v1', credentials=creds)
+        messages = service.users().messages().list(userId='me', maxResults=1, labelIds=['INBOX']).execute().get('messages', [])
+
+        if not messages:
+            print("No new messages found.")
+            return '', 200
+
+        msg_id = messages[0]['id']
+        msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+
+        # Extract the body
+        snippet = msg.get("snippet")
+        print(f"New email: {snippet}")
+
+    except Exception as e:
+        print("Error processing Gmail notification:", e)
+
     return '', 200
 
 # Utility to convert Flow creds to dict
