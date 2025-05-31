@@ -36,7 +36,6 @@ def authorize():
         redirect_uri=REDIRECT_URI
     )
     auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
-    # session['flow'] = flow.credentials_to_dict()
     return redirect(auth_url)
 
 @app.route('/oauth2callback')
@@ -48,7 +47,11 @@ def oauth2callback():
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
-    print("TOKEN",creds.token)
+
+    # Save credentials in user session
+    session['credentials'] = credentials_to_dict(creds)
+
+
     service = build('gmail', 'v1', credentials=creds)
     profile = service.users().getProfile(userId='me').execute()
     email_address = profile['emailAddress']
