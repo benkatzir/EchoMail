@@ -8,10 +8,7 @@ from mcp.server.fastmcp import FastMCP
 
 SCOPES = [os.getenv("GMAIL_SCOPES")]
 
-# Create MCP server
-mcp = FastMCP("Gmail Server")
 
-@mcp.tool()
 def get_gmail_service():
     creds = None
     if os.path.exists("token.json"):
@@ -23,7 +20,7 @@ def get_gmail_service():
             token.write(creds.to_json())
     return build("gmail", "v1", credentials=creds)
 
-@mcp.tool()
+
 def get_emails_by_category(category, max_results=5):
     service = get_gmail_service()
     cat = category.replace("CATEGORY_", "").lower()
@@ -42,6 +39,4 @@ def get_emails_by_category(category, max_results=5):
         })
     return emails
 
-# Run the server if the script is executed directly
-if __name__ == "__main__":  
-    mcp.run()
+
