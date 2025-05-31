@@ -3,3 +3,9 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
+pydantic>=2.10.0
+python-dotenv==1.0.0
+openai>=1.0.0
+nest-asyncio==1.6.0
+pydantic-ai
+twilio
