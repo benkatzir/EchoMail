@@ -50,6 +50,8 @@ def oauth2callback():
 
     # Save credentials in user session
     session['credentials'] = credentials_to_dict(creds)
+    print("TOKEN", creds.token)
+    print("REFRESH TOKEN", creds.refresh_token)
 
 
     service = build('gmail', 'v1', credentials=creds)
@@ -76,6 +78,8 @@ def logout():
     session.clear()
     return redirect('/')
 
+from email.utils import parseaddr
+
 @app.route('/gmail-webhook', methods=['POST'])
 def gmail_notify():
     data = request.get_json()
@@ -87,17 +91,15 @@ def gmail_notify():
         payload = json.loads(decoded_data)
 
         user_email = payload.get("emailAddress")
-        history_id = payload.get("historyId")  # optional for future use
-
         creds = user_credentials.get(user_email)
         if not creds:
             print(f"No credentials found for {user_email}")
             return '', 200
 
-        # Rebuild service and get latest messages
         service = build('gmail', 'v1', credentials=creds)
-        messages = service.users().messages().list(userId='me', maxResults=1, labelIds=['INBOX']).execute().get('messages', [])
 
+        # Get the latest message
+        messages = service.users().messages().list(userId='me', maxResults=1, labelIds=['INBOX']).execute().get('messages', [])
         if not messages:
             print("No new messages found.")
             return '', 200
@@ -105,15 +107,41 @@ def gmail_notify():
         msg_id = messages[0]['id']
         msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
 
-        # Extract the body
-        snippet = msg.get("snippet")
-        print(f"New email: {snippet}")
+        headers = msg['payload'].get('headers', [])
+        from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+        subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
+
+        # Extract plain text body
+        body = ''
+        payload = msg['payload']
+        if payload.get('mimeType') == 'text/plain':
+            body = payload['body'].get('data', '')
+        elif 'parts' in payload:
+            for part in payload['parts']:
+                if part.get('mimeType') == 'text/plain':
+                    body = part['body'].get('data', '')
+                    break
+
+        # Ensure body is decoded if not already
+        if body:
+            body_bytes = base64.urlsafe_b64decode(body + '==')  # add padding if needed
+            encoded_body = base64.b64encode(body_bytes).decode('utf-8')
+        else:
+            encoded_body = ''
+
+        # Print final JSON
+        email_json = {
+            "token": "ya29.a0AW4XtxgBj6qbVemA5LDXLntG3K9J5fce-_lAUsNVlw7PY-yFKjQ9qGDEqj0uhn_gx2_wHmYJZaHsV_-15WG-_wtWpZUo1ZSFSYWTw4zUIOOfdFjInIZebk9BDPzq4v8hRuhvQZfoVOzdjywGe8TQRi9pQ_dYyT_j0q-NCXVgaCgYKAcUSARYSFQHGX2MiL0BlyldVOy2fDqM48TXq6w0175",
+            "refresh_token": "1//06khMOaO6Nw88CgYIARAAGAYSNwF-L9IrEBO6rY5uRVa8hOC1_Bx7d1wVo9pU5A5P0C11dIvBUpnq1LEmFojjx7K3BDS9PLMBbPE",
+            "body": encoded_body
+        }
+
+        print(json.dumps(email_json, indent=2))
 
     except Exception as e:
         print("Error processing Gmail notification:", e)
 
     return '', 200
-
 # Utility to convert Flow creds to dict
 def credentials_to_dict(creds):
     return {
