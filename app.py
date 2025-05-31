@@ -173,44 +173,65 @@ class EmailAnalyzer:
 # Initialize the analyzer
 analyzer = EmailAnalyzer(agent)
 
-@app.route('/call', methods=['POST'])
-def call_user():
+def make_call(email_body: str):
+    """Internal function to make the actual Twilio call"""
     try:
-        if not request.is_json:
-            return jsonify({
-                'status': 'error',
-                'message': 'Request must be JSON'
-            }), 400
-
-        data = request.get_json()
-        email_body = data.get('email_body')
-        
-        if not email_body:
-            return jsonify({
-                'status': 'error',
-                'message': 'email_body is required'
-            }), 400
-
+        print("Initiating Twilio call setup...")
+        print(f"Creating Twilio client with Account SID: {TWILIO_ACCOUNT_SID[:6]}...")
         twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         announcement = f"URGENT email received. Content: {email_body}"
         
-        call = twilio_client.calls.create(
-            to=USER_NUMBER,
-            from_=TWILIO_NUMBER,
-            twiml=f"<Response><Say voice='Polly.Joanna'>{announcement}</Say></Response>"
-        )
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Call initiated successfully',
-            'call_sid': call.sid
-        })
+        print(f"Attempting to make call from {TWILIO_NUMBER} to {USER_NUMBER}")
+        try:
+            call = twilio_client.calls.create(
+                to=USER_NUMBER,
+                from_=TWILIO_NUMBER,
+                twiml=f"<Response><Say voice='Polly.Joanna'>{announcement}</Say></Response>"
+            )
+            print(f"Call successfully initiated with SID: {call.sid}")
+            return {
+                'status': 'success',
+                'message': 'Call initiated successfully',
+                'call_sid': call.sid
+            }
+        except Exception as twilio_error:
+            error_msg = f"Twilio API error: {str(twilio_error)}"
+            print(error_msg)
+            return {
+                'status': 'error',
+                'message': error_msg
+            }
 
     except Exception as e:
+        error_msg = f"Unexpected error in make_call: {str(e)}"
+        print(error_msg)
+        import traceback
+        print(f"Call error traceback: {traceback.format_exc()}")
+        return {
+            'status': 'error',
+            'message': error_msg
+        }
+
+@app.route('/call', methods=['POST'])
+def call_user():
+    """Route handler for call endpoint"""
+    if not request.is_json:
         return jsonify({
             'status': 'error',
-            'message': str(e)
-        }), 500
+            'message': 'Request must be JSON'
+        }), 400
+
+    data = request.get_json()
+    email_body = data.get('email_body')
+    
+    if not email_body:
+        return jsonify({
+            'status': 'error',
+            'message': 'email_body is required'
+        }), 400
+
+    result = make_call(email_body)
+    return jsonify(result)
 
 @app.route('/categorize', methods=['POST'])
 @async_route
@@ -256,7 +277,15 @@ async def categorize(email_body):
 
         if (result.category == "URGENT"):
             print("URGENT category detected - initiating call")
-            call_user()
+            try:
+                call_result = make_call(email_body)
+                print(f"Call initiation result: {call_result}")
+                if call_result['status'] == 'error':
+                    print(f"Call failed: {call_result['message']}")
+            except Exception as call_error:
+                print(f"Error initiating call: {str(call_error)}")
+                import traceback
+                print(f"Call error traceback: {traceback.format_exc()}")
             
         response = {
             'status': 'success',
