@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from mcp.server.fastmcp import FastMCP
 
-SCOPES = [os.getenv("GMAIL_SCOPES")]
+SCOPES = [os.getenv(""https://mail.google.com")")]
 
 
 def get_gmail_service():
