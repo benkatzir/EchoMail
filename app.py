@@ -55,10 +55,15 @@ class EmailAnalyzer:
     async def analyze(self, email_body: str) -> EmailAnalysis:
         prompt = (
             "You are an AI assistant that classifies emails into categories and provides a brief summary.\n"
-            "Categories: URGENT, Research Applications, Student Queries, University Affairs, Publications, Other.\n"
-            "Given the following email body, determine the most appropriate category and provide a concise summary.\n\n"
+            "Categories and their usage:\n"
+            "- URGENT: Time-sensitive matters requiring immediate attention, especially those with deadlines or critical issues\n"
+            "- Research Applications: Applications for research positions, grants, or funding requests\n"
+            "- Student Queries: Questions about courses, thesis, assignments, or academic progress\n"
+            "- University Affairs: Administrative matters, policies, or institutional procedures\n"
+            "- Publications: Matters related to academic publications, papers, or journal submissions\n"
+            "- Other: Anything that doesn't fit the above categories\n\n"
             f"Email Body:\n{email_body}\n\n"
-            "Include a JSON response with category and summary. Note that the category MUST be one of: URGENT, Research Applications, Student Queries, University Affairs, Publications, Other."
+            "Include a JSON response with category and summary."
         )
         response = await self.agent.run(prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
@@ -78,8 +83,13 @@ class EmailAnalyzer:
                 else:
                     raise ValueError("No JSON object found in response")
 
-            # Clean the JSON string
-            json_str = json_str.replace('\\n', '').replace('\\"', '"').strip()
+            # Clean the JSON string - handle all common escape sequences
+            json_str = (json_str
+                       .replace('\\n', '')  # Remove newlines
+                       .replace('\\"', '"')  # Fix escaped quotes
+                       .replace("\\'", "'")  # Fix escaped apostrophes
+                       .replace('\\\\', '\\')  # Fix escaped backslashes
+                       .strip())
             print("Debug - Cleaned JSON string:", json_str)  # Debug print
             
             # Parse and validate the JSON
