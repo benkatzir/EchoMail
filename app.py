@@ -72,7 +72,7 @@ def logout():
     session.clear()
     return redirect('/')
 
-@app.route('/gmail/notify', methods=['POST'])
+@app.route('/gmail-webhook', methods=['POST'])
 def gmail_notify():
     data = request.get_json()
     print("Received Gmail notification:", data)
