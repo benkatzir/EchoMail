@@ -106,9 +106,19 @@ class EmailAnalyzer:
             "Include a JSON response with category and summary. Note that the category MUST be one of: URGENT, Research Applications, Student Queries, University Affairs, Publications, Other."
         )
         print("Calling agent now")
-        response = await self.agent.run(prompt)
-        print(f"Agent call succeded: {response}")
-        response_text = response.content if hasattr(response, 'content') else str(response)
+        try:
+            print("Agent prompt:", prompt)  # Debug the prompt
+            response = await self.agent.run(prompt)
+            print(f"Raw agent response type: {type(response)}")  # Debug response type
+            print(f"Raw agent response: {response}")  # Debug full response
+            response_text = response.content if hasattr(response, 'content') else str(response)
+            print(f"Processed response text: {response_text}")  # Debug processed text
+        except Exception as e:
+            print(f"Error during agent.run: {str(e)}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            raise
         
         print("Debug - Raw response:", response_text)  # Debug print
         
@@ -225,31 +235,45 @@ async def categorize_email():
 
 async def categorize(email_body):
     try:
-        
         if not email_body:
             return jsonify({
                 'status': 'error',
                 'message': 'email_body is required'
             }), 400
 
-        print("waiting for response")
-        result = await analyzer.analyze(email_body)
-        print("response recieved")
+        print("Waiting for response from analyzer...")
+        try:
+            result = await analyzer.analyze(email_body)
+            print("Analyzer response received successfully")
+        except Exception as e:
+            print(f"Error in analyzer.analyze: {str(e)}")
+            import traceback
+            print(f"Analyzer error traceback: {traceback.format_exc()}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Analyzer error: {str(e)}'
+            }), 500
 
         if (result.category == "URGENT"):
+            print("URGENT category detected - initiating call")
             call_user()
-        return jsonify({
+            
+        response = {
             'status': 'success',
             'category': result.category,
             'summary': result.summary
-        })
-        
+        }
+        print(f"Returning successful response: {response}")
+        return jsonify(response)
 
     except Exception as e:
+        print(f"Unexpected error in categorize: {str(e)}")
+        import traceback
+        print(f"Categorize error traceback: {traceback.format_exc()}")
         return jsonify({
             'status': 'error',
-            'message': str(e)
-        }), 500 
+            'message': f'Unexpected error: {str(e)}'
+        }), 500
 
 @app.route('/')
 def index():
