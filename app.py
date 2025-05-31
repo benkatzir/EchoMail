@@ -205,6 +205,8 @@ async def categorize_email():
             }), 400
 
         result = await analyzer.analyze(email_body)
+        if (result.category == "URGENT"):
+            call_user()
         return jsonify({
             'status': 'success',
             'category': result.category,
