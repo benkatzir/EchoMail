@@ -9,6 +9,24 @@ from dotenv import load_dotenv
 import re
 import asyncio
 from functools import wraps
+import subprocess
+import requests
+from openai import OpenAI
+from twilio.rest import Client as TwilioClient
+
+# 1. Twilio credentials and phone numbers
+TWILIO_ACCOUNT_SID = "ACed2b59bb3c29bf204ba5b3dbd28a0120"
+TWILIO_AUTH_TOKEN  = "1d61ce90c9bdb0ef05d59d7f19081861"
+TWILIO_NUMBER      = "+18449594676"   # Your Twilio phone number in E.164 format
+USER_NUMBER        = "+14085072051"  # e.g. "+1XXXXXXXXXX"
+
+# 2. OpenAI/DeepSeek credentials
+os.environ["OPENAI_API_KEY"] = "your_openai_key_here"
+
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY", "fake"),
+    base_url="https://strategic-jellyfish-onlyreesh-e1b6a486.koyeb.app/v1",
+)
 
 # Load environment variables
 load_dotenv()
@@ -63,7 +81,7 @@ class EmailAnalyzer:
             "- Publications: Matters related to academic publications, papers, or journal submissions\n"
             "- Other: Anything that doesn't fit the above categories\n\n"
             f"Email Body:\n{email_body}\n\n"
-            "Include a JSON response with category and summary."
+            "Include a JSON response with category and summary. Note that the category MUST be one of: URGENT, Research Applications, Student Queries, University Affairs, Publications, Other."
         )
         response = await self.agent.run(prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
@@ -127,6 +145,45 @@ def test_endpoint():
         'status': 'success',
         'message': 'Test endpoint is working!'
     }
+
+@app.route('/call', methods=['POST'])
+def call_user():
+    try:
+        if not request.is_json:
+            return jsonify({
+                'status': 'error',
+                'message': 'Request must be JSON'
+            }), 400
+
+        data = request.get_json()
+        email_body = data.get('email_body')
+        
+        if not email_body:
+            return jsonify({
+                'status': 'error',
+                'message': 'email_body is required'
+            }), 400
+
+        twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        announcement = f"URGENT email received. Content: {email_body}"
+        
+        call = twilio_client.calls.create(
+            to=USER_NUMBER,
+            from_=TWILIO_NUMBER,
+            twiml=f"<Response><Say voice='Polly.Joanna'>{announcement}</Say></Response>"
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Call initiated successfully',
+            'call_sid': call.sid
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/categorize', methods=['POST'])
 @async_route
