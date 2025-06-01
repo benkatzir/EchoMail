@@ -1,0 +1,39 @@
+[
+    {
+      "id": "169eefc8138e68ca",
+      "threadId": "169eefc8138e68ca",
+      "labelIds": ["UNREAD", "IMPORTANT", "CATEGORY_PERSONAL", "INBOX"],
+      "snippet": "John Smith CEO of BigCo...",
+      "historyId": "270427",
+      "internalDate": "1554492714000",
+      "payload": {
+        "partId": "",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "John Smith <john@bigco.com>"
+          },
+          {
+            "name": "To",
+            "value": "you@example.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Need to reach me?"
+          },
+          {
+            "name": "Date",
+            "value": "Mon, 5 Apr 2021 10:45:14 -0700"
+          }
+        ],
+        "body": {
+          "size": 123,
+          "data": "Sm9obiBTbWl0aCBDRU8g..."
+        }
+      },
+      "sizeEstimate": 3500
+    }
+  ]
+  
