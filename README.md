@@ -71,7 +71,7 @@ Agents communicate via a centralized **Multi-Agent Control Plane (MCP)** server,
 
 ## 📄 License
 
-This project is released under the [MIT License](LICENSE).
+This project is released under the [MIT License](https://www.mit.edu/~amini/LICENSE.md).
 
 ---
 
